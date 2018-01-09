@@ -1,0 +1,87 @@
+
+end nodes are labeled to indicate the end of a sentence or thought
+
+children may be references to nodes anywhere in the tree, so if that word or phase is already somewhere
+go there????
+
+
+
+
+way to save middle sections or end better???
+
+make sure links dont duplicate
+
+add descriptions to objects with links:
+
+
+similarity
+	like
+	synonyms
+	antonyms
+	
+
+frequency
+	never
+	rarely
+	sometimes
+	often
+	usually
+	always
+
+magnitude?
+trustworthyness? how many sources say so?  if 10 or more treat as fact?
+	
+		can be a verb phrase, adjective, noun?
+
+		for example 
+		
+		fish never come on land
+		fish rarely come out of water
+		fish sometimes make bubbles
+		fish often are colorful
+		fish usually eat other fish
+		fish are always in some body of water
+		fish sometimes big
+		fish are usually tasty
+
+
+maybe link to sentences too
+
+books, quotes, memories?
+
+parts of senteces orgainzed like at top full sentence is a few references to
+these strung together
+
+parts can make up other parts too
+
+
+
+======
+
+
+when asked "what is a ___?" or similar question
+
+it is a __.parent that __.attribute(popular or predominant one)
+
+
+
+when asked something unknown like what do horses eat:
+
+	realizes info not known
+
+	maybe try searching web?
+
+	or:
+		
+	look at cousin attributes or parent attributes
+
+	respond with guess, they are similar to ___ so maybe ___???
+
+	maybe even look at trends like this animal eats ... ... .. and likes all three of them so maybe most animals like the things they eat
+
+	maybe more effecient way to save 
+
+	replace what with actual values when reading
+
+
+	
