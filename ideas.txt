@@ -84,4 +84,7 @@ when asked something unknown like what do horses eat:
 	replace what with actual values when reading
 
 
+
+conjuntions!!!
+
 	
