@@ -55,12 +55,13 @@ def label(sentence, memory):
 				# direct object found, add to most recent verb
 				if recent == "verb":
 					verbs[-1][1].append(nouns[-1])
-			
-				if recent == "prep":
+		
+				# looking for object of preposition	
+				elif recent == "prep":
 					prep[1].append(nouns[-1])
 			
 				# multi word noun, a mod for a noun that is a noun means multi word
-				if i > 0 and labels[i - 1][0] == "noun":
+				elif i > 0 and labels[i - 1][0] == "noun":
 					nouns[-2][1].append(nouns[-1])	
 					nouns.pop()
 				
@@ -104,16 +105,6 @@ def label(sentence, memory):
 		print_main(nouns[0], words)
 		print "========="
 		print print_main(verbs[0], words)
-
-		
-				
-					
-			
-
-
-
-
-
 
 	'''# identifies the subject
 	subject = find_subject(words, labels)	
@@ -161,17 +152,8 @@ def label(sentence, memory):
 
 	# finds modifications to the main verb
 
-	# recursively call function again to find details of the self functioning parts???
+	# recursively call function again to find details of the self functioning parts???'''
 
-
-	# determines if the sentence is a question or statement
-	#is_quest = is_question(words, labels)'''
-
-	print words	
-	print labels
-	print groups
-	
-	
 	# add infered unknowns to list	
 
 def check_mem(word, memory):
@@ -179,7 +161,7 @@ def check_mem(word, memory):
 	if word == "a" or word == "an" or word == "the":
 		return ["article"]
 	
-	if word in ["has", "will", "do", "am", "is", "are", "being", "be", "been", "have", "had"]:
+	if word in ["has", "will", "do", "does", "am", "is", "are", "being", "be", "been", "have", "had"]:
 		return ["verb", "helper"]
 	
 	if memory.find_obj(word) != None:
