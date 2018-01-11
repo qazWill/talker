@@ -1,6 +1,10 @@
 # contains functions and objects to improve convenience for small tasks,
 # miscellaneous help
 
+# empty a list
+def empty(array):
+	for i in range(0, len(array)):
+		array.pop()
 
 # converts list elements to string type
 def str_a(old):

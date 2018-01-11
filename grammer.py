@@ -4,25 +4,101 @@
 
 from helpers import *
 
+# will be used to keep track of all possible ways of reading a sentence
+class Permutation:
+
+	def __init__(self):
+
+		self.nouns = []
+		self.verbs = []
+		self.noun_mods = []
+		self.verb_mods = []
+		self.needy_nouns = []
+		self.prep = None
+		self.recent = None
+
+		self.labels = []
+
+	def copy(self):
+		perm = Permutation()
+		[perm.nouns, prep1] = self.copy_list(self.nouns)
+		[perm.verbs, prep2] = self.copy_list(self.verbs)
+		[perm.noun_mods, prep3] = self.copy_list(self.noun_mods)
+		[perm.verb_mods, prep4] = self.copy_list(self.verb_mods)
+		[perm.needy_nouns, prep5] = self.copy_list(self.needy_nouns)
+		perm.recent = self.recent
+
+		if prep1 != None:
+			perm.prep = prep1
+		if prep2 != None:
+			perm.prep = prep2
+		if prep3 != None:
+			perm.prep = prep3
+		if prep4 != None:
+			perm.prep = prep4
+		if prep5 != None:
+			perm.prep = prep5
+		
+		for label in self.labels:
+			perm.labels.append(list(label))	
+
+		return perm
+
+	def copy_list(self, array):
+		
+		prep = None
+		
+		new_array = []
+		for item in array:
+			new_item = [None, []]
+			new_item[0] = item[0]
+			[new_item[1], new_prep] = self.copy_list(item[1])
+			new_array.append(new_item)
+			if new_prep != None:
+				prep = new_prep
+			elif item == self.prep:
+				prep = new_array[-1]
+		return [new_array, prep]
+
+def get_permutations(label_options):
+	
+	perms = []
+	
+	size = 1	
+	for labels in label_options:
+		size *= len(labels)
+
+	for i in range(0, size):	
+		perms.append(Permutation()) 
+
+	for labels in label_options:
+		chunk_size = len(perms) / len(labels)
+		index = 0
+		for label in labels:
+			for i in range(0, chunk_size):
+				perms[index].labels.append(list(label))	
+				index += 1
+
+	return perms
+		
+
 def label(sentence, memory):
 
 	# gets words from sentence
 	words = sentence.split()
 
 	# initializes the list of labels
-	labels = []
+	label_perms = []
 	groups = []
 	for word in words:
-		labels.append("")
+		label_perms.append(None)
 
 	# checks memory for any known parts
 	complete = True
 	for i in range(0, len(words)):
-		labels[i] = check_mem(words[i], memory)	
-		if labels[i] == "":
+		label_perms[i] = check_mem(words[i], memory)	
+		if label_perms[i] == []:
 			complete = False
-
-	print complete
 
 	# if there are gaps try to fill in, then update complete if fixed
 	if not complete:
@@ -31,160 +107,150 @@ def label(sentence, memory):
 	# only use the sentence if there are no gaps for now, later implement guessing strategies
 	if complete:
 
-		noun = None # noun[0] is the index of the noun, noun[1] is all of its modifiers
-		verb = None 
-
-		noun_mods = []
-		verb_mods = []
-
-		nouns = []
-		verbs = []
-
-		recent = None 
-		prep = None # maybe change
+		#perms = get_permutations(labels)
 		
+		perms = []
+		perms.append(Permutation())
 
+		# iterates through all labels and words
 		for i in range(0, len(words)):
-		
-			if labels[i][0] == "noun":
 
-				# records noun
-				nouns.append([i, noun_mods])
-				noun_mods = []
+			# add permutations for all possibilities
+			new_perms = []
+			for perm in perms:
+
+				first = True
+				for label in label_perms[i]:
+					if first:
+						first = False
+						perm.labels.append(label)
+					else:
+						new_perms.append(perm.copy())
+						new_perms[-1].labels.pop()
+						new_perms[-1].labels.append(list(label))
+			for perm in new_perms:
+				perms.append(perm)
+
+			# iterates through all currently viable structure permutations	
+			for perm in perms:
 			
-				# direct object found, add to most recent verb
-				if recent == "verb":
-					verbs[-1][1].append(nouns[-1])
+				if perm.labels[i][0] == "noun":
+
+					# records noun
+					perm.nouns.append([i, perm.noun_mods])
+					perm.noun_mods = []	
+			
+					# direct object found, add to most recent verb
+					if perm.recent == "verb":
+						perm.verbs[-1][1].append(perm.nouns[-1])
 		
-				# looking for object of preposition	
-				elif recent == "prep":
-					prep[1].append(nouns[-1])
+					# looking for object of preposition	
+					elif perm.recent == "prep":
+						perm.prep[1].append(perm.nouns[-1])
 			
-				# multi word noun, a mod for a noun that is a noun means multi word
-				elif i > 0 and labels[i - 1][0] == "noun":
-					nouns[-2][1].append(nouns[-1])	
-					nouns.pop()
+					# multi word noun, a mod for a noun that is a noun means multi word
+					elif i > 0 and perm.labels[i - 1][0] == "noun" and words[i] not in ["that", "who", "which"]:
+						perm.nouns[-2][1].append(perm.nouns[-1])	
+						perm.nouns.pop()
+
+					# if it isnt a multi word noun, and recent was a noun then this is an appositive
+					# also need to consider things like, "thats the tool I wanted to buy!"
+					# tool it the tool in "I wanted to buy a tool"
+					elif perm.recent == "noun":
+						perm.nouns[-2][1].append(perm.nouns[-1])
+						if words[i] in ["that", "who", "which"]:
+							perm.needy_nouns.append(perm.nouns[-1])	
+							#print needy_nouns
+
+					if perm.prep != None:
+						#print i
+						#print perm.prep[1]
+						#print perm.verbs[0]
+						#print 
+						pass
 				
-				recent = "noun"
+					perm.recent = "noun"
+					#print "noun:"
 						
-			elif labels[i][0] == "verb":
+				elif perm.labels[i][0] == "verb":
 
-				verbs.append([i, verb_mods])
-				verb_mods = []
+					perm.verbs.append([i, perm.verb_mods])
+					perm.verb_mods = []
 
-				# multi word verb like have eaten, a mod for a verb that is a verb marks this
-				if i > 0 and labels[i - 1][0] == "verb":
-					verbs[-2][1].append(verbs[-1])	
-					verbs.pop()
+					# multi word verb like have eaten, a mod for a verb that is a verb marks this
+					if i > 0 and perm.labels[i - 1][0] == "verb" and perm.labels[i - 1][1] == "helper":
+						perm.verbs[-2][1].append(perm.verbs[-1])	
+						perm.verbs.pop()
 
-				recent = "verb"
+					# if a subject needs attaching to the verb its doing
+					if len(perm.needy_nouns) > 0:
+						perm.needy_nouns[-1][1].append(perm.verbs.pop()) 
+						perm.needy_nouns.pop()
 
-			elif labels[i][0] == "adjective":
-				noun_mods.append([i, []])
-			elif labels[i][0] == "adverb":
-			 	verb_mods.append([i, []])	
-			elif labels[i][0] == "article":
-				noun_mods.append([i, []])
-			elif labels[i][0] == "preposition":
+					perm.recent = "verb"
 
-				# prep modifies last noun
-				if len(verbs) == 0:
-					nouns[-1][1].append([i, []]) 					
-					prep = nouns[-1][1][-1]
+				elif perm.labels[i][0] == "adjective":
+					perm.noun_mods.append([i, []])
+				elif perm.labels[i][0] == "adverb":
+			 		perm.verb_mods.append([i, []])	
+				elif perm.labels[i][0] == "article":
+					perm.noun_mods.append([i, []])
+				elif perm.labels[i][0] == "preposition":
 
-				# prep modifies last verb encountered	
-				else:	
-					verbs[-1][1].append([i, []])
-					prep = verbs[-1][1][-1]
+					# prep modifies last noun
+					if len(perm.verbs) == 0:
+						perm.nouns[-1][1].append([i, []]) 					
+						perm.prep = perm.nouns[-1][1][-1]
 
-				recent = "prep"
+					# prep modifies last verb encountered	
+					else:	
+						perm.verbs[-1][1].append([i, []])
+						perm.prep = perm.verbs[-1][1][-1]
+
+					perm.recent = "prep"
 					
-			else:
-				pass
-
-		print_main(nouns[0], words)
-		print "========="
-		print print_main(verbs[0], words)
-
-	'''# identifies the subject
-	subject = find_subject(words, labels)	
-	
-	# identifies the main verb
-	verb = find_main_verb(words, labels)
-
-	# connects the different parts of verbs
-	chain = -1
-	for i in range(0, len(words)):
-		if labels[i][0] == "verb":	
-			if chain == -1:
-				chain = i
-				chain_words = []
-			chain_words.append(words[i])
-		else:
-			if chain != -1:
-				groups.append(["verb", "", chain, i - 1])
-				chain = -1
-	if chain != -1:
-		groups.append(["verb", "", chain, len(words)])
-
-	# connects compound nouns	
-	chain = -1
-	for i in range(0, len(words)):
-		if labels[i][0] == "noun":	
-			if chain == -1:
-				chain = i
-				chain_words = []
-			chain_words.append(words[i])
-		else:
-			if chain != -1:
-				groups.append(["noun", "", chain, i - 1])
-				chain = -1
-	if chain != -1:
-		groups.append(["noun", "", chain, len(words)])
-
-	# identifies the subject
-	subject = find_subject(words, labels)	
-	
-	# identifies the main verb
-	verb = find_main_verb(words, labels)
-
-	# finds modifications to the subject
-
-	# finds modifications to the main verb
-
-	# recursively call function again to find details of the self functioning parts???'''
-
-	# add infered unknowns to list	
+				else:
+					pass
+		
+		for perm in perms:
+			print_main(perm.nouns[0], words)
+			print "========="
+			print print_main(perm.verbs[0], words)
+			print "+++++++++++++++++++++++++"
 
 def check_mem(word, memory):
+	perms = []
 
 	if word == "a" or word == "an" or word == "the":
-		return ["article"]
+		perms.append(["article"])
+		perms.append(["adjective"])
 	
 	if word in ["has", "will", "do", "does", "am", "is", "are", "being", "be", "been", "have", "had"]:
-		return ["verb", "helper"]
+		perms.append(["verb", "helper"])
 	
 	if memory.find_obj(word) != None:
-		return ["noun"] 
+		perms.append(["noun"])
 	for verb in memory.verbs:
 		if verb.present == word:
-			return ["verb", "present"]
+			perms.append(["verb", "present"])
 		if verb.past == word:
-			return ["verb", "past"]
+			perms.append(["verb", "past"])
 		if verb.past_participle == word:
-			return ["adjective", "past participle"]
+			perms.append(["adjective", "past participle"])
 		if verb.get_gerund() == word:
-			return ["verb", "gerund"]
+			perms.append(["verb", "gerund"])
 	for adj in memory.adjectives:
 		if adj.word == word:
-			return ["adjective", ""] 
+			perms.append(["adjective", ""])
 	for adv in memory.adverbs:
 		if adv.word == word:
-			return ["adverb", ""] 
+			perms.append(["adverb", ""])
 	if word in ["to", "from", "above", "below", "in", "on", "beside", "inside", "outside"]:
-		return ["preposition", ""]
+		perms.append(["preposition", ""])
 
-	return [""]
+	
+
+	return perms 
 
 def print_main(element, words, level=0):
 	print " " * level + words[element[0]]

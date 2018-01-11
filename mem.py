@@ -55,12 +55,26 @@ class Object:
 class Verb:
 
 	def __init__(self, words):
+
+		# default form is plural, write a conversion function
 	
 		self.word = words[0]
 		self.present = words[1] 
 		self.past = words[2] 
 		self.past_participle = words[3] 
-		print words
+
+	def forms(self):
+		
+		forms = []
+		forms.append(get_infinitive())
+		forms.append(get_gerund())
+		forms.append(get_past())
+		forms.append(get_present())
+		forms.append(get_future())
+
+		# add rest when functions are ready and add singular and plural column
+		# also add past, present, future filter
+		# and passive active filter
 
 	def get_infinitive(self):
 		return "to " + self.present
@@ -82,8 +96,16 @@ class Verb:
 
 	def get_future(self):
 		return "will " + self.present
-
 	
+	def get_progressive_past(self):
+		return "have been " + self.get_gerund()
+
+	def get_progressive_present(self):
+		return "are " + self.get_gerund()
+
+	def get_progressive_future(self):
+		return "will be " + self.get_gerund()
+
 			
 class Adjective:
 

@@ -1,10 +1,12 @@
-animal|apple|cat|city|dog|fly|goat|hill|human|insect|lizard|office|organism|pet|post|sheep|tree|
-attack~attack~attacked~attacked|fall~fall~fell~fallen|
+animal|apple|building|cat|city|dog|fly|fruit|goat|hill|human|insect|lizard|office|organism|pet|post|sheep|that|tree|
+attack~attack~attacked~attacked|eat~eat~ate~eaten|fall~fall~fell~fallen|
 red|ripe|
 
 animal|cat|pet|lizard|insect|sheep|goat|
 0|
 apple|
+0|
+building|
 0|
 cat|
 0|
@@ -13,6 +15,8 @@ city|
 dog|
 0|
 fly|
+0|
+fruit|
 0|
 goat|
 0|
@@ -33,6 +37,8 @@ pet|dog|
 post|
 0|
 sheep|
+0|
+that|
 0|
 tree|
 0|
