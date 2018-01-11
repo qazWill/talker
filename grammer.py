@@ -239,7 +239,7 @@ def label(sentence, memory):
 				elif perm.labels[i][0] == "conjunction":
 						
 					if i > 0 and perm.labels[i][0] == "verb":
-						perm.labels[i][1] == "verb":
+						perm.labels[i][1] = "verb"
 						perm.verbs[-1][1].append([i, []]) # list of connections made	
 					
 					perm.recent = "conj"
