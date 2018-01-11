@@ -9,80 +9,58 @@ class Permutation:
 
 	def __init__(self):
 
-		self.nouns = []
-		self.verbs = []
-		self.noun_mods = []
-		self.verb_mods = []
-		self.needy_nouns = []
-		self.prep = None
-		self.recent = None
-		self.needs_subject = True
+		# the mods of each word, for example to get modifiers of words[i] look in mods[i]
+		self.mods = []
 
+		# the labels for this particular permutation
 		self.labels = []
+		
+		# might not need but oh well
+		self.words = []
+
+		# list of things that will need to attach or be attached to something coming later
+		# needy - need something or need to be needed by something
+		self.needy_adjectives = [] # need to modify a noun
+		self.needy_verb_adverbs = [] # need to modify a verb
+		self.needy_degree_adverbs = [] # need to modify adjectives or other adverbs
+		self.needy_nouns = [] # need a verb
+		self.needy_preps = [] # need a object of preposition(next noun probably)
+		
+		# the entry point, everything is about this, initially unknown probably first noun though
+		self.subject = None
+		
+	def __str__(self):
+		
+		return self.str_at(self.subject)
+
+	def str_at(self, i, level=0):
+		
+		string = " " * level + self.words[i] + " - " + self.labels[i][0]
+		for mod in self.mods[i]:
+			string += "\n"
+			string += self.str_at(mod, level + 1)
+		return string
 
 	def copy(self):
-		perm = Permutation()
-		[perm.nouns, prep1] = self.copy_list(self.nouns)
-		[perm.verbs, prep2] = self.copy_list(self.verbs)
-		[perm.noun_mods, prep3] = self.copy_list(self.noun_mods)
-		[perm.verb_mods, prep4] = self.copy_list(self.verb_mods)
-		[perm.needy_nouns, prep5] = self.copy_list(self.needy_nouns)
-		perm.recent = self.recent
-		perm.needs_subject = self.needs_subject
 
-		if prep1 != None:
-			perm.prep = prep1
-		if prep2 != None:
-			perm.prep = prep2
-		if prep3 != None:
-			perm.prep = prep3
-		if prep4 != None:
-			perm.prep = prep4
-		if prep5 != None:
-			perm.prep = prep5
-		
+		perm = Permutation()
+
+		for mod in self.mods:
+			perm.mods.append(list(mod))	
 		for label in self.labels:
 			perm.labels.append(list(label))	
+	
+		perm.words = self.words
+
+		perm.needy_adjectives = list(self.needy_adjectives)
+		perm.needy_verb_adverbs = list(self.needy_verb_adverbs)
+		perm.needy_degree_adverbs = list(self.needy_degree_adverbs)
+		perm.needy_nouns = list(self.needy_nouns)
+		perm.needy_preps = list(self.needy_verbs)
+		
+		perm.subject = self.subject
 
 		return perm
-
-	def copy_list(self, array):
-		
-		prep = None
-		
-		new_array = []
-		for item in array:
-			new_item = [None, []]
-			new_item[0] = item[0]
-			[new_item[1], new_prep] = self.copy_list(item[1])
-			new_array.append(new_item)
-			if new_prep != None:
-				prep = new_prep
-			elif item == self.prep:
-				prep = new_array[-1]
-		return [new_array, prep]
-
-def get_permutations(label_options):
-	
-	perms = []
-	
-	size = 1	
-	for labels in label_options:
-		size *= len(labels)
-
-	for i in range(0, size):	
-		perms.append(Permutation()) 
-
-	for labels in label_options:
-		chunk_size = len(perms) / len(labels)
-		index = 0
-		for label in labels:
-			for i in range(0, chunk_size):
-				perms[index].labels.append(list(label))	
-				index += 1
-
-	return perms
-		
 
 def label(sentence, memory):
 
@@ -111,21 +89,22 @@ def label(sentence, memory):
 
 		perms = []
 		perms.append(Permutation())
+		perms[-1].words = words
 
 		# iterates through all labels and words
 		for i in range(0, len(words)):
 
-			# add permutations for all possibilities
+			# add permutations for all new possibilities
 			new_perms = []
 			for perm in perms:
 
 				first = True
-				print label_perms[i]
 				for label in label_perms[i]:
 					
 					if first:
 						first = False
 						perm.labels.append(list(label))
+						perm.mods.append([])
 					else:
 						new_perms.append(perm.copy())
 						new_perms[-1].labels.pop()
@@ -139,125 +118,68 @@ def label(sentence, memory):
 			
 				if perm.labels[i][0] == "noun":
 
-					# records noun
-					perm.nouns.append([i, perm.noun_mods])
-					perm.noun_mods = []	
-			
-					# direct object found, add to most recent verb
-					if perm.recent == "verb":
-						perm.verbs[-1][1].append(perm.nouns[-1])
-		
-					# looking for object of preposition	
-					elif perm.recent == "prep":
-						perm.prep[1].append(perm.nouns[-1])
-			
-					# multi word noun, a mod for a noun that is a noun means multi word
-					elif i > 0 and perm.labels[i - 1][0] == "noun" and words[i] not in ["that", "who", "which"]:
-						perm.nouns[-2][1].append(perm.nouns[-1])	
-						perm.nouns.pop()
+					# records noun and resets needy_adjectives
+					perm.mods[i] += perm.needy_adjectives
+					perm.needy_adjectives = []	
 
-					# if it isnt a multi word noun, and recent was a noun then this is an appositive
-					# also need to consider things like, "thats the tool I wanted to buy!"
-					# tool is the tool in "I wanted to buy a tool"
-					elif perm.recent == "noun":
-						perm.nouns[-2][1].append(perm.nouns[-1])
-						if words[i] in ["that", "who", "which"]:
-							perm.needy_nouns.append(perm.nouns[-1])	
-							#print needy_nouns
-						perm.nouns.pop()
+					# assume first noun is subject change later if proved wrong
+					if perm.subject == None:
+						perm.subject = i
+						perm.needy_nouns.append(i) # subject needs a verb
 
-					if perm.prep != None:
-						#print i
-						#print perm.prep[1]
-						#print perm.verbs[0]
-						#print 
-						pass
-
-					if perm.needs_subject:
-						perm.needs_subject = False
-						perm.labels[i][1] = "subject"	
-						perm.needy_nouns.append(perm.nouns[-1])
-				
-					perm.recent = "noun"
-					#print "noun:"
 						
 				elif perm.labels[i][0] == "verb":
 
-					# an article before a verb makes no sense	
-					if i > 0 and perm.labels[i - 1][0] == "article":
-						removals.append(perm)
+					# records the modifiers of the verb
+					perm.mods[i] += perm.needy_verb_adverbs
+					perm.needy_verb_adverbs = []
 
-					# an adjective before a verb makes no sense	
-					if i > 0 and perm.labels[i - 1][0] == "adjective":
-						removals.append(perm)
-						continue
-
-					perm.verbs.append([i, perm.verb_mods])
-					perm.verb_mods = []
-					
-					# multi word verb like have eaten, a mod for a verb that is a verb marks this
-					if i > 0 and perm.labels[i - 1][0] == "verb" and perm.labels[i - 1][1] == "helper":
-						perm.verbs[-1][1].append(perm.verbs[-2])	
-						perm.verbs.remove(perm.verbs[-2])
-
-					# if a subject needs attaching to the verb its doing
-					if len(perm.needy_nouns) > 0:
-						perm.needy_nouns[-1][1].append(perm.verbs[-1]) 
-						perm.needy_nouns.pop()
-					
-					perm.recent = "verb"
 
 				elif perm.labels[i][0] == "adjective":
-					perm.noun_mods.append([i, []])
+				
+					# records the mod and attaches adverbs
+					perm.needy_adjectives.append(i)
+					perm.mods[i] += perm.needy_degree_adverbs
+					perm.needy_degree_adverbs = []
+
 
 				elif perm.labels[i][0] == "adverb":
-			 		perm.verb_mods.append([i, []])	
+				
+					# if it modifies only verbs	
+					if perm.labels[i][1] == "verb":
+			 			perm.needy_verb_adverbs.append(i)	
+						perm.mods[i] += perm.needy_degree_adverbs
+						perm.needy_degree_adverbs = []
+		
+					# if it is a degree adverb
+					if perm.labels[i][1] == "degree":
+			 			perm.needy_degree_verbs.append(i)	
+
 
 				elif perm.labels[i][0] == "article":
 
-					# an adjective before an article makes no sense	
-					if i > 0 and perm.labels[i - 1][0] == "adjective":
-						removals.append(perm)
-						continue
+					perm.needy_adjectives.append(i) # maybe change later, but it works for now
 
-					perm.noun_mods.append([i, []])
 
 				elif perm.labels[i][0] == "preposition":
 
-					# prep modifies last noun
-					if len(perm.verbs) == 0:
-						perm.nouns[-1][1].append([i, []]) 					
-						perm.prep = perm.nouns[-1][1][-1]
+					perm.needy_prepositions.append(i)
 
-					# prep modifies last verb encountered	
-					else:	
-						perm.verbs[-1][1].append([i, []])
-						perm.prep = perm.verbs[-1][1][-1]
-
-					perm.recent = "prep"
 
 				elif perm.labels[i][0] == "conjunction":
-						
-					if i > 0 and perm.labels[i][0] == "verb":
-						perm.labels[i][1] = "verb"
-						perm.verbs[-1][1].append([i, []]) # list of connections made	
-					
-					perm.recent = "conj"
+					pass	
+
 						
 				else:
 					pass
+
 			
 			# remove all permutations that no longer make grammatical sense	
 			for removal in removals:
 				perms.remove(removal)
 		
 		for perm in perms:
-			print len(perm.nouns)
-			print len(perm.verbs)
-			print_main(perm.nouns[0], words, perm.labels)
-			print "========="
-			print print_main(perm.verbs[0], words, perm.labels)
-			print "+++++++++++++++++++++++++"
+			print perm
 
 def check_mem(word, memory):
 	perms = []
@@ -285,7 +207,9 @@ def check_mem(word, memory):
 			perms.append(["adjective", ""])
 	for adv in memory.adverbs:
 		if adv.word == word:
-			perms.append(["adverb", ""])
+			perms.append(["adverb", "verb"])
+			if word in ["very", "quite", "so", "too", "extremely"]:
+				perms[-1][1] = "degree"
 	if word in ["to", "from", "above", "below", "in", "on", "beside", "inside", "outside"]:
 		perms.append(["preposition", ""])
 	if word in ["or", "and", "but", "therefore", "yet", "so"]:
@@ -297,8 +221,3 @@ def check_mem(word, memory):
 
 	return perms 
 
-def print_main(element, words, labels, level=0):
-	print " " * level + words[element[0]] + " - " + labels[element[0]][0]
-	if len(element[1]) > 0:
-		for new_el in element[1]:
-			print_main(new_el, words, labels, level + 1)
