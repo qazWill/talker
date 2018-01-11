@@ -19,12 +19,14 @@ class Permutation:
 		self.words = []
 
 		# list of things that will need to attach or be attached to something coming later
-		# needy - need something or need to be needed by something
-		self.needy_adjectives = [] # need to modify a noun
-		self.needy_verb_adverbs = [] # need to modify a verb
-		self.needy_degree_adverbs = [] # need to modify adjectives or other adverbs
-		self.needy_nouns = [] # need a verb
-		self.needy_preps = [] # need a object of preposition(next noun probably)
+		# needing - needs something
+		# needed - is needed by something 
+		self.needed_adjectives = [] # need to modify a noun
+		self.needed_verb_adverbs = [] # need to modify a verb
+		self.needed_degree_adverbs = [] # need to modify adjectives or other adverbs
+		self.needing_nouns = [] # need a verb
+		self.needing_preps = [] # need a object of preposition(next noun probably)
+		self.needed_preps = [] # preps that aren't modifying anything yet
 		
 		# the entry point, everything is about this, initially unknown probably first noun though
 		self.subject = None
@@ -52,15 +54,24 @@ class Permutation:
 	
 		perm.words = self.words
 
-		perm.needy_adjectives = list(self.needy_adjectives)
-		perm.needy_verb_adverbs = list(self.needy_verb_adverbs)
-		perm.needy_degree_adverbs = list(self.needy_degree_adverbs)
-		perm.needy_nouns = list(self.needy_nouns)
-		perm.needy_preps = list(self.needy_verbs)
+		perm.needed_adjectives = list(self.needed_adjectives)
+		perm.needed_verb_adverbs = list(self.needed_verb_adverbs)
+		perm.needed_degree_adverbs = list(self.needed_degree_adverbs)
+		perm.needing_nouns = list(self.needing_nouns)
+		perm.needing_preps = list(self.needing_preps)
+		perm.needed_preps = list(self.needed_preps)
 		
 		perm.subject = self.subject
 
 		return perm
+	
+	def get_last_of(self, options):
+		i = len(self.labels) - 2 
+		while i >= 0:  
+			if self.labels[i][0] in options:
+				return i
+			i -= 1
+		return -1
 
 def label(sentence, memory):
 
@@ -118,53 +129,96 @@ def label(sentence, memory):
 			
 				if perm.labels[i][0] == "noun":
 
-					# records noun and resets needy_adjectives
-					perm.mods[i] += perm.needy_adjectives
-					perm.needy_adjectives = []	
+					# records noun and resets needed_adjectives
+					perm.mods[i] += perm.needed_adjectives
+					perm.needed_adjectives = []	
 
 					# assume first noun is subject change later if proved wrong
 					if perm.subject == None:
 						perm.subject = i
-						perm.needy_nouns.append(i) # subject needs a verb
+						perm.needing_nouns.append(i) # subject needs a verb
+
+					# if there was a recent preposition without a noun, attach this noun to it
+					if len(perm.needing_preps) > 0:
+						perm.mods[perm.needing_preps.pop()].append(i)
+					else:	
+						
+						# otherwise make sure there isnt a complete prep that needs attaching	
+						if len(perm.needed_preps) > 0:
+							if perm.labels[perm.needed_preps[-1]][1] == "adjective":
+								perm.mods[i].append(perm.needed_preps.pop())
 
 						
 				elif perm.labels[i][0] == "verb":
 
 					# records the modifiers of the verb
-					perm.mods[i] += perm.needy_verb_adverbs
-					perm.needy_verb_adverbs = []
+					perm.mods[i] += perm.needed_verb_adverbs
+					perm.needed_verb_adverbs = []
+
+					# if there is a noun in need help it
+					if len(perm.needing_nouns) > 0:
+						perm.mods[perm.needing_nouns[-1]].append(i)
+
+					# if there is a prep in need help it	
+					if len(perm.needed_preps) > 0:
+						if perm.labels[perm.needed_preps[-1]][1] == "adverb":
+							perm.mods[i].append(perm.needed_preps.pop())
 
 
 				elif perm.labels[i][0] == "adjective":
 				
 					# records the mod and attaches adverbs
-					perm.needy_adjectives.append(i)
-					perm.mods[i] += perm.needy_degree_adverbs
-					perm.needy_degree_adverbs = []
+					perm.needed_adjectives.append(i)
+					perm.mods[i] += perm.needed_degree_adverbs
+					perm.needed_degree_adverbs = []
 
 
 				elif perm.labels[i][0] == "adverb":
 				
 					# if it modifies only verbs	
 					if perm.labels[i][1] == "verb":
-			 			perm.needy_verb_adverbs.append(i)	
-						perm.mods[i] += perm.needy_degree_adverbs
-						perm.needy_degree_adverbs = []
+			 			perm.needed_verb_adverbs.append(i)	
+						perm.mods[i] += perm.needed_degree_adverbs
+						perm.needed_degree_adverbs = []
 		
 					# if it is a degree adverb
 					if perm.labels[i][1] == "degree":
-			 			perm.needy_degree_verbs.append(i)	
+			 			perm.needed_degree_adverbs.append(i)	
 
 
 				elif perm.labels[i][0] == "article":
 
-					perm.needy_adjectives.append(i) # maybe change later, but it works for now
+					perm.needed_adjectives.append(i) # maybe change later, but it works for now
 
 
 				elif perm.labels[i][0] == "preposition":
 
-					perm.needy_prepositions.append(i)
+					perm.needing_preps.append(i)
 
+					# if it acts as an adjective
+					if perm.labels[i][1] == "adjective":
+						index = perm.get_last_of(["noun", "verb"])
+						if perm.labels[index][0] == "verb":
+							removals.append(perm)
+							continue
+						else:
+							if index == -1:
+								needed_preps.append(i)
+							else:
+								perm.mods[index].append(i)
+
+					# if it acts as an adverb
+					if perm.labels[i][1] == "adverb":
+						index = perm.get_last_of(["verb"])
+						if index == -1:
+							index = perm.get_last_of(["noun"])
+							if index == -1:
+								perm.needed_preps.append(i)
+							else:
+								removals.append(perm)
+								continue
+						else:
+							perm.mods[index].append(i)
 
 				elif perm.labels[i][0] == "conjunction":
 					pass	
@@ -175,6 +229,7 @@ def label(sentence, memory):
 
 			
 			# remove all permutations that no longer make grammatical sense	
+			print removals
 			for removal in removals:
 				perms.remove(removal)
 		
@@ -182,6 +237,10 @@ def label(sentence, memory):
 			print perm
 
 def check_mem(word, memory):
+
+	degree_adverbs = ["very", "quite", "so", "too", "extremely"]
+	preps = ["to", "from", "above", "below", "in", "on", "beside", "inside", "outside"]
+
 	perms = []
 
 	if word == "a" or word == "an" or word == "the":
@@ -208,10 +267,11 @@ def check_mem(word, memory):
 	for adv in memory.adverbs:
 		if adv.word == word:
 			perms.append(["adverb", "verb"])
-			if word in ["very", "quite", "so", "too", "extremely"]:
+			if word in degree_adverbs:
 				perms[-1][1] = "degree"
-	if word in ["to", "from", "above", "below", "in", "on", "beside", "inside", "outside"]:
-		perms.append(["preposition", ""])
+	if word in preps:
+		perms.append(["preposition", "adjective"])
+		perms.append(["preposition", "adverb"])
 	if word in ["or", "and", "but", "therefore", "yet", "so"]:
 		perms.append(["conjunction", "sentence"])
 	if word in ["or", "and"]:

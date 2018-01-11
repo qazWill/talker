@@ -112,9 +112,24 @@ class Adjective:
 	def __init__(self, word):
 		
 		self.word = word
+
+	def get_reletive(self):
+		return None
+	
+	def get_superlative(self):
+		return None
+
+	def get_adverb(self):
+		return None
 			
 class Adverb:
 
+	def __init__(self, word):
+		
+		self.word = word
+
+class Preposition:
+		
 	def __init__(self, word):
 		
 		self.word = word
@@ -144,6 +159,7 @@ class Memory:
 		self.verbs = []
 		self.adjectives = []
 		self.adverbs = []
+		self.preps = []
 		self.other = []
 		self.load()
 
@@ -160,8 +176,12 @@ class Memory:
 			self.insert_word(Adjective(word), self.adjectives)
 
 	def add_adverb(self, word):
-		if self.find_word(word) == None:
+		if self.find_word(word, self.adverbs) == None:
 			self.insert_word(word, self.adverb)
+
+	def add_prep(self, word):
+		if self.find_word(word, self.preps) == None:
+			self.insert_word(word, self.preps)
 
 	def load(self):
 		file = open(self.obj_file_name, 'r')
