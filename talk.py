@@ -150,13 +150,13 @@ class Talker:
 
 	def test_func2(self):
 		
-		self.memory.add_noun("fruit")
-		self.memory.add_verb(["eat", "eat", "ate", "eaten"])
-		self.memory.add_noun("building")
+		self.memory.add_noun("textbook")
+		self.memory.add_verb(["confuse", "confuse", "confused", "confused"])
+		self.memory.add_noun("me")
 		self.memory.add_noun("city")
 		self.memory.add_adjective("ripe")
 		self.memory.add_adjective("red")
-		self.memory.add_noun("that")
+		self.memory.add_noun("this")
 
 			
 
