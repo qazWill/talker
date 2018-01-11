@@ -30,6 +30,7 @@ class Permutation:
 		
 		# the entry point, everything is about this, initially unknown probably first noun though
 		self.subject = None
+		self.subject_skips = 0
 		
 	def __str__(self):
 		
@@ -62,6 +63,7 @@ class Permutation:
 		perm.needed_preps = list(self.needed_preps)
 		
 		perm.subject = self.subject
+		perm.subject_skips = self.subject_skips
 
 		return perm
 	
@@ -72,6 +74,35 @@ class Permutation:
 				return i
 			i -= 1
 		return -1
+
+	# checks to see if the sentence is valid, need slang incompletes too though
+	def valid(self):
+
+		# makes sure there is a subject that has a verb
+		if self.subject == None:
+			return False
+		found = False
+		for mod in self.mods[self.subject]:
+			if self.labels[mod][0] == "verb":
+				found = True	
+		if not found:
+			return False
+
+		# makes sure all words get used		
+		hanging = self.get_hanging(self.subject)
+		if len(hanging) > 0:
+			return False 
+
+		return True 
+
+	def get_hanging(self, i, words=None):
+		if words == None:
+			words = range(0, len(self.words))	
+		if i in words:
+			words.remove(i) 
+		for mod in self.mods[i]:
+			words = self.get_hanging(mod, words)
+		return words
 
 def label(sentence, memory):
 
@@ -135,8 +166,11 @@ def label(sentence, memory):
 
 					# assume first noun is subject change later if proved wrong
 					if perm.subject == None:
-						perm.subject = i
-						perm.needing_nouns.append(i) # subject needs a verb
+						if perm.subject_skips > 0:
+							perm.subject_skips -= 1
+						else:	
+							perm.subject = i
+							perm.needing_nouns.append(i) # subject needs a verb
 
 					# if there was a recent preposition without a noun, attach this noun to it
 					if len(perm.needing_preps) > 0:
@@ -147,6 +181,12 @@ def label(sentence, memory):
 						if len(perm.needed_preps) > 0:
 							if perm.labels[perm.needed_preps[-1]][1] == "adjective":
 								perm.mods[i].append(perm.needed_preps.pop())
+
+					# if there was recently a verb this is a direct object
+					index = perm.get_last_of(["prep", "noun", "verb"])
+					if index != -1:
+						if perm.labels[index][0] == "verb":
+							perm.mods[index].append(i)
 
 						
 				elif perm.labels[i][0] == "verb":
@@ -191,19 +231,20 @@ def label(sentence, memory):
 					perm.needed_adjectives.append(i) # maybe change later, but it works for now
 
 
-				elif perm.labels[i][0] == "preposition":
+				elif perm.labels[i][0] == "prep":
 
 					perm.needing_preps.append(i)
 
 					# if it acts as an adjective
 					if perm.labels[i][1] == "adjective":
 						index = perm.get_last_of(["noun", "verb"])
-						if perm.labels[index][0] == "verb":
+						if index == -1:
 							removals.append(perm)
 							continue
 						else:
-							if index == -1:
-								needed_preps.append(i)
+							if perm.labels[index][0] == "verb":
+								removals.append(perm)
+								continue
 							else:
 								perm.mods[index].append(i)
 
@@ -214,6 +255,7 @@ def label(sentence, memory):
 							index = perm.get_last_of(["noun"])
 							if index == -1:
 								perm.needed_preps.append(i)
+								perm.subject_skips += 1
 							else:
 								removals.append(perm)
 								continue
@@ -226,12 +268,18 @@ def label(sentence, memory):
 						
 				else:
 					pass
-
 			
 			# remove all permutations that no longer make grammatical sense	
-			print removals
 			for removal in removals:
 				perms.remove(removal)
+
+		# final grammer pruning
+		removals = []
+		for perm in perms:
+			if not perm.valid():
+				removals.append(perm)			
+		for removal in removals:
+			perms.remove(removal)
 		
 		for perm in perms:
 			print perm
@@ -250,7 +298,10 @@ def check_mem(word, memory):
 		perms.append(["verb", "helper"])
 	
 	if memory.find_obj(word) != None:
-		perms.append(["noun", ""])
+		perms.append(["noun", "single"])
+		perms.append(["noun", "compound"])
+		perms.append(["noun", "appositive"])
+		perms.append(["noun", "relative"]) # relative clause
 	for verb in memory.verbs:
 		if verb.present == word:
 			perms.append(["verb", "present"])
@@ -270,8 +321,8 @@ def check_mem(word, memory):
 			if word in degree_adverbs:
 				perms[-1][1] = "degree"
 	if word in preps:
-		perms.append(["preposition", "adjective"])
-		perms.append(["preposition", "adverb"])
+		perms.append(["prep", "adjective"])
+		perms.append(["prep", "adverb"])
 	if word in ["or", "and", "but", "therefore", "yet", "so"]:
 		perms.append(["conjunction", "sentence"])
 	if word in ["or", "and"]:
