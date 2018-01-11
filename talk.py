@@ -149,7 +149,12 @@ class Talker:
 			
 
 	def test_func2(self):
-		
+	
+		file = open("word_lists/adj1.txt", "r")
+		for line in file.readlines():
+			if line != "\n":
+				word = line.split("\n")[0]		
+				self.memory.add_adjective(word)	
 		self.memory.add_noun("textbook")
 		self.memory.add_verb(["confuse", "confuse", "confused", "confused"])
 		self.memory.add_noun("me")
