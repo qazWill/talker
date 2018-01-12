@@ -120,7 +120,9 @@ class Adjective:
 		return None
 
 	def get_adverb(self):
-		return None
+		if self.word[-1] == "y":
+			return self.word[:-1] + "ily"
+		return self.word + "ly"	
 			
 class Adverb:
 

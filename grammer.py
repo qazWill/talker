@@ -4,6 +4,8 @@
 
 from helpers import *
 
+pronouns = ["I", "you", "he", "she", "it", "we", "they", "us", "them", "those", "these", "this", "that"]
+
 # will be used to keep track of all possible ways of reading a sentence
 class Permutation:
 
@@ -37,7 +39,8 @@ class Permutation:
 		return self.str_at(self.subject)
 
 	def str_at(self, i, level=0):
-		
+		if i == None:
+			return "blank sentence"	
 		string = " " * level + self.words[i] + " - " + self.labels[i][0]
 		string += "(" + self.labels[i][1] + ")"
 		for mod in self.mods[i]:
@@ -71,10 +74,26 @@ class Permutation:
 	def get_last_of(self, options):
 		i = len(self.labels) - 2 
 		while i >= 0:  
+			if self.labels[i][0] == "noun":
+				if self.labels[i][1] == "possesive":
+					i -= 1
+					continue
+				if self.labels[i][1] == "compound":
+					if self.has_possesive(i):
+						i -= 1
+						continue
 			if self.labels[i][0] in options:
 				return i
 			i -= 1
 		return -1
+
+	def has_possesive(self, i):
+		while i < len(self.labels) and self.labels[i][1] == "compound":
+			i += 1
+		if i < len(self.labels):
+			if self.labels[i] == "possesive":
+				return True
+		return False
 
 	# checks to see if the sentence is valid, need slang incompletes too though
 	def valid(self):
@@ -158,12 +177,25 @@ def label(sentence, memory):
 			# iterates through all currently viable structure permutations	
 			removals = []
 			for perm in perms:
+				
+				#print perm
+				#raw_input("...")
 			
 				if perm.labels[i][0] == "noun":
 
 					# records noun and resets needed_adjectives
 					perm.mods[i] += perm.needed_adjectives
 					perm.needed_adjectives = []	
+					
+					# treat as adjective if its a possesive noun
+					if perm.labels[i][1] == "possesive":
+						perm.needed_adjectives.append(i)
+						perm.subject_skips += 1
+
+					# pronouns don't have adjectives
+					if perm.words[i] in pronouns and len(perm.mods[i]) > 0:
+						removals.append(perm)
+						continue
 
 					# assume first noun is subject change later if proved wrong
 					if perm.subject == None:
@@ -184,9 +216,17 @@ def label(sentence, memory):
 								perm.mods[i].append(perm.needed_preps.pop())
 
 					# if this isn't a single noun and its the end, that can't work
-					if i >= len(perm.words) - 1 and perm.labels[i][1] != "single":
+					if i >= len(perm.words) - 1 and perm.labels[i][1] not in ["single"]:
 						removals.append(perm)
 						continue
+
+					# if there are trailing adverbs then attach to last verb
+					if len(perm.needed_verb_adverbs) > 0:
+						index = perm.get_last_of("verb") 
+						if index != -1:
+							perm.mods[index] += perm.needed_verb_adverbs
+							perm.needed_verb_adverbs = []
+
 
 					# checks what the last key element was
 					index = perm.get_last_of(["prep", "noun", "verb"])
@@ -201,10 +241,28 @@ def label(sentence, memory):
 								removals.append(perm)
 								continue
 
-							# if there is an adjective then cant be a compound	
-							if perm.labels[index][1] == "compound" and len(perm.mods[i]) > 0:
-								removals.append(perm)
-								continue
+							if perm.labels[index][1] == "compound":
+
+								perm.mods[index].pop()
+								perm.mods[i].append(index)
+
+								# if there is an adjective then cant be a compound	
+								if len(perm.mods[i]) > 0:
+									removals.append(perm)
+									continue
+	
+								# these can't be in a compound
+								if perm.words[i] in ["that", "which", "who"]:
+									removals.append(perm)
+									continue
+
+							if perm.labels[index][1] == "appositive":
+
+								# these can't be in an appositive 
+								if perm.words[i] in ["that", "which", "who"]:
+									removals.append(perm)
+									continue
+				
 
 							# if last noun was expecting a direct object clause then this noun needs a verb
 							if perm.labels[index][1] == "do_clause" or perm.labels[index][1] == "rel_clause_do":
@@ -246,9 +304,15 @@ def label(sentence, memory):
 								continue
 								
 
-						# if there was recently a verb this is a direct object
 						if perm.labels[index][0] == "verb":
-							perm.mods[index].append(i)
+						
+							# if its a direct object
+							if perm.labels[i][1] not in ["compound", "possesive"]:
+								perm.mods[index].append(i)
+
+							# might need...
+							if perm.labels[i][1] == "rel_clause_do":	
+								pass
 
 
 						
@@ -300,7 +364,7 @@ def label(sentence, memory):
 						perm.needed_degree_adverbs = []
 		
 					# if it is a degree adverb
-					if perm.labels[i][1] == "degree":
+					elif perm.labels[i][1] == "degree":
 			 			perm.needed_degree_adverbs.append(i)	
 
 
@@ -367,6 +431,14 @@ def label(sentence, memory):
 		# final grammer pruning
 		removals = []
 		for perm in perms:
+			
+			# if there are trailing adverbs then attach to last verb
+			if len(perm.needed_verb_adverbs) > 0:
+				index = perm.get_last_of("verb") 
+				if index != -1:
+					perm.mods[index] += perm.needed_verb_adverbs
+					perm.needed_verb_adverbs = []
+
 			if not perm.valid():
 				removals.append(perm)			
 		for removal in removals:
@@ -385,8 +457,11 @@ def check_mem(word, memory):
 	if word == "a" or word == "an" or word == "the":
 		perms.append(["article", ""])
 	
-	if word in ["has", "will", "do", "does", "am", "is", "are", "being", "be", "been", "have", "had"]:
+	if word in ["was", "were", "has", "have", "had", "will", "do", "does", "am", "is", "are", "being", "be", "been"]:
 		perms.append(["verb", "helper"])
+
+	if word in ["was", "were", "is", "are", "being", "be", "been"]:
+		perms.append(["verb", "copula"])
 	
 	if memory.find_obj(word) != None:
 		perms.append(["noun", "single"])
@@ -395,6 +470,10 @@ def check_mem(word, memory):
 			perms.append(["noun", "appositive"]) # like the man the myth the legend
 			perms.append(["noun", "do_clause"]) # direct object clause, example "The food I like" 
 			perms.append(["noun", "rel_clause"]) # relative clause The food that ...
+	if word in ["my", "his", "her", "our", "their", "your"]:
+		perms.append(["adjective", "possesive"])
+	if len(word) > 1 and (word[-1] == "'" or word[-2] == "'"):
+		perms.append(["noun", "possesive"])
 	if word	in ["that", "who", "which"]:
 		perms.append(["noun", "rel_clause_do"]) # direct obj of relative clause
 		perms.append(["noun", "rel_clause_sub"]) # sub of relative clause
@@ -411,11 +490,15 @@ def check_mem(word, memory):
 	for adj in memory.adjectives:
 		if adj.word == word:
 			perms.append(["adjective", ""])
+		if adj.get_adverb() == word:
+			perms.append(["adverb", "verb"])
 	for adv in memory.adverbs:
 		if adv.word == word:
 			perms.append(["adverb", "verb"])
 			if word in degree_adverbs:
 				perms[-1][1] = "degree"
+	if word in degree_adverbs:
+		perms.append(["adverb", "degree"])
 	if word in preps:
 		perms.append(["prep", "adjective"])
 		perms.append(["prep", "adverb"])
