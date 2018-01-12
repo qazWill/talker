@@ -156,12 +156,12 @@ class Talker:
 				word = line.split("\n")[0]		
 				self.memory.add_adjective(word)	
 		self.memory.add_noun("textbook")
-		self.memory.add_verb(["confuse", "confuse", "confused", "confused"])
+		self.memory.add_verb(["explode", "explode", "exploded", "exploded"])
 		self.memory.add_noun("me")
 		self.memory.add_noun("city")
 		self.memory.add_adjective("ripe")
-		self.memory.add_adjective("red")
-		self.memory.add_noun("this")
+		self.memory.add_adjective("green")
+		self.memory.add_noun("I")
 
 			
 

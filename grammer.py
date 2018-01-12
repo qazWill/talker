@@ -183,6 +183,11 @@ def label(sentence, memory):
 							if perm.labels[perm.needed_preps[-1]][1] == "adjective":
 								perm.mods[i].append(perm.needed_preps.pop())
 
+					# if this isn't a single noun and its the end, that can't work
+					if i >= len(perm.words) - 1 and perm.labels[i][1] != "single":
+						removals.append(perm)
+						continue
+
 					# checks what the last key element was
 					index = perm.get_last_of(["prep", "noun", "verb"])
 					if index != -1:
@@ -192,7 +197,7 @@ def label(sentence, memory):
 							perm.mods[index].append(i)							
 							
 							# if the last noun is labeled as single that obviously is wrong
-							if perm.labels[index][1] == "single":
+							if perm.labels[index][1] in ["single"]:
 								removals.append(perm)
 								continue
 
@@ -202,8 +207,44 @@ def label(sentence, memory):
 								continue
 
 							# if last noun was expecting a direct object clause then this noun needs a verb
-							if perm.labels[index][1] == "do_clause":
-								perm.needing_nouns.append(i)	
+							if perm.labels[index][1] == "do_clause" or perm.labels[index][1] == "rel_clause_do":
+								perm.needing_nouns.append(i)
+								
+								# don't want a that occuring after a clauses subj
+								if perm.words[i] in ["that", "which", "who"]:
+									removals.append(perm)
+									continue
+						
+							# if last noun was expecting a relative object clause then this noun should be who which or that 
+							if perm.labels[index][1] == "rel_clause":
+							
+								# remove perms that don't have the right pronouns or that have adjectives
+								if perm.words[i] not in ["who", "which", "that"]:
+									removals.append(perm)
+									continue								
+								if perm.labels[i][1] not in ["rel_clause_do", "rel_clause_sub"]:
+									removals.append(perm)
+									continue	
+								if len(perm.mods[i]) > 0:
+									removals.append(perm)
+									continue
+								
+								# if this is the relative clause subject, then it needs a verb
+								if perm.labels[i][1] == "rel_clause_sub":
+									perm.needing_nouns.append(i)
+
+
+							# remove rel_clause do's and sub's from non_rel clauses
+							else:
+								if perm.labels[i][1] in ["rel_clause_do", "rel_clause_sub"]:
+									removals.append(perm)
+									continue
+
+							# it already has a subject this shouldn't be here
+							if perm.labels[index][1] == "rel_clause_sub":
+								removals.append(perm)
+								continue
+								
 
 						# if there was recently a verb this is a direct object
 						if perm.labels[index][0] == "verb":
@@ -232,7 +273,7 @@ def label(sentence, memory):
 						if perm.labels[index][0] == "noun":
 
 							# if last key word was compound noun or appositive its wrong
-							if perm.labels[index][1] in ["compound", "appositive", "relative", "do_clause"]:
+							if perm.labels[index][1] in ["compound", "appositive", "rel_clause", "do_clause", "rel_clause_do"]:
 								removals.append(perm)
 								continue
 
@@ -305,7 +346,7 @@ def label(sentence, memory):
 						if perm.labels[index][0] == "noun":
 
 							# if last key word was compound noun or appositive its wrong
-							if perm.labels[index][1] in ["compound", "appositive", "relative", "do_clause"]:
+							if perm.labels[index][1] in ["compound", "appositive", "relative", "do_clause", "rel_clause"]:
 								removals.append(perm)
 								continue
 
@@ -349,10 +390,14 @@ def check_mem(word, memory):
 	
 	if memory.find_obj(word) != None:
 		perms.append(["noun", "single"])
-		perms.append(["noun", "compound"])
-		perms.append(["noun", "appositive"])
-		perms.append(["noun", "do_clause"]) # direct object clause, example "The food I like" 
-		#perms.append(["noun", "rel_clause"]) # relative clause
+		if word not in ["which", "who", "that"]:
+			perms.append(["noun", "compound"]) # like post office
+			perms.append(["noun", "appositive"]) # like the man the myth the legend
+			perms.append(["noun", "do_clause"]) # direct object clause, example "The food I like" 
+			perms.append(["noun", "rel_clause"]) # relative clause The food that ...
+	if word	in ["that", "who", "which"]:
+		perms.append(["noun", "rel_clause_do"]) # direct obj of relative clause
+		perms.append(["noun", "rel_clause_sub"]) # sub of relative clause
 	for verb in memory.verbs:
 		if verb.present == word:
 			perms.append(["verb", "present"])
