@@ -39,6 +39,7 @@ class Permutation:
 	def str_at(self, i, level=0):
 		
 		string = " " * level + self.words[i] + " - " + self.labels[i][0]
+		string += "(" + self.labels[i][1] + ")"
 		for mod in self.mods[i]:
 			string += "\n"
 			string += self.str_at(mod, level + 1)
@@ -182,11 +183,32 @@ def label(sentence, memory):
 							if perm.labels[perm.needed_preps[-1]][1] == "adjective":
 								perm.mods[i].append(perm.needed_preps.pop())
 
-					# if there was recently a verb this is a direct object
+					# checks what the last key element was
 					index = perm.get_last_of(["prep", "noun", "verb"])
 					if index != -1:
+
+						# must be an appositive, compound noun, or something like "the shirt my friend likes"
+						if perm.labels[index][0] == "noun":
+							perm.mods[index].append(i)							
+							
+							# if the last noun is labeled as single that obviously is wrong
+							if perm.labels[index][1] == "single":
+								removals.append(perm)
+								continue
+
+							# if there is an adjective then cant be a compound	
+							if perm.labels[index][1] == "compound" and len(perm.mods[i]) > 0:
+								removals.append(perm)
+								continue
+
+							# if last noun was expecting a direct object clause then this noun needs a verb
+							if perm.labels[index][1] == "do_clause":
+								perm.needing_nouns.append(i)	
+
+						# if there was recently a verb this is a direct object
 						if perm.labels[index][0] == "verb":
 							perm.mods[index].append(i)
+
 
 						
 				elif perm.labels[i][0] == "verb":
@@ -195,14 +217,29 @@ def label(sentence, memory):
 					perm.mods[i] += perm.needed_verb_adverbs
 					perm.needed_verb_adverbs = []
 
-					# if there is a noun in need help it
+					# if there is a noun in need, help it
 					if len(perm.needing_nouns) > 0:
-						perm.mods[perm.needing_nouns[-1]].append(i)
+						perm.mods[perm.needing_nouns.pop()].append(i)
 
-					# if there is a prep in need help it	
+					# if there is a prep in need, help it	
 					if len(perm.needed_preps) > 0:
 						if perm.labels[perm.needed_preps[-1]][1] == "adverb":
 							perm.mods[i].append(perm.needed_preps.pop())
+
+					index = perm.get_last_of(["prep", "noun", "verb"])
+					if index != -1:
+
+						if perm.labels[index][0] == "noun":
+
+							# if last key word was compound noun or appositive its wrong
+							if perm.labels[index][1] in ["compound", "appositive", "relative", "do_clause"]:
+								removals.append(perm)
+								continue
+
+						if perm.labels[index][0] == "verb":
+							pass
+
+					
 
 
 				elif perm.labels[i][0] == "adjective":
@@ -262,6 +299,19 @@ def label(sentence, memory):
 						else:
 							perm.mods[index].append(i)
 
+					index = perm.get_last_of(["prep", "noun", "verb"])
+					if index != -1:
+
+						if perm.labels[index][0] == "noun":
+
+							# if last key word was compound noun or appositive its wrong
+							if perm.labels[index][1] in ["compound", "appositive", "relative", "do_clause"]:
+								removals.append(perm)
+								continue
+
+						if perm.labels[index][0] == "verb":
+							pass
+
 				elif perm.labels[i][0] == "conjunction":
 					pass	
 
@@ -287,12 +337,12 @@ def label(sentence, memory):
 def check_mem(word, memory):
 
 	degree_adverbs = ["very", "quite", "so", "too", "extremely"]
-	preps = ["to", "from", "above", "below", "in", "on", "beside", "inside", "outside"]
+	preps = ["to", "from", "above", "below", "in", "on", "beside", "inside", "outside", "up", "down"]
 
 	perms = []
 
 	if word == "a" or word == "an" or word == "the":
-		perms.append(["article"])
+		perms.append(["article", ""])
 	
 	if word in ["has", "will", "do", "does", "am", "is", "are", "being", "be", "been", "have", "had"]:
 		perms.append(["verb", "helper"])
@@ -301,7 +351,8 @@ def check_mem(word, memory):
 		perms.append(["noun", "single"])
 		perms.append(["noun", "compound"])
 		perms.append(["noun", "appositive"])
-		perms.append(["noun", "relative"]) # relative clause
+		perms.append(["noun", "do_clause"]) # direct object clause, example "The food I like" 
+		#perms.append(["noun", "rel_clause"]) # relative clause
 	for verb in memory.verbs:
 		if verb.present == word:
 			perms.append(["verb", "present"])
